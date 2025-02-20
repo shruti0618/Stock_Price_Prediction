@@ -1,49 +1,71 @@
-document.getElementById('analyzeButton').addEventListener('click', function() {
+document.getElementById('analyzeButton').addEventListener('click', function () {
     const priceInput = document.getElementById('priceInput').value;
-    const prices = priceInput.split(',').map(Number);
-    
+    const prices = priceInput.split(',').map(Number).filter(n => !isNaN(n));
+
     if (prices.length < 2) {
-        document.getElementById('result').innerText = "Please enter at least two prices.";
+        document.getElementById('result').innerText = "Please enter at least two valid prices.";
         return;
     }
 
-    const { maxProfit, buySellRecommendations } = analyzeStockPrices(prices);
-    
-    let resultText = `Maximum Profit: ${maxProfit}\nRecommendations:\n`;
-    buySellRecommendations.forEach(rec => {
-        resultText += `${rec}\n`;
-    });
+    const singleTransactionProfit = maxProfitSingleTransaction(prices);
+    const multipleTransactionsProfit = maxProfitMultipleTransactions(prices);
+    const buySellRecommendations = getBuySellRecommendations(prices);
+
+    let resultText = `🔹 Max Profit (Single Transaction): ${singleTransactionProfit}\n`;
+    resultText += `🔹 Max Profit (Multiple Transactions): ${multipleTransactionsProfit}\n\n`;
+    resultText += `📈 Buy-Sell Recommendations:\n${buySellRecommendations.join('\n')}`;
 
     document.getElementById('result').innerText = resultText;
 });
 
-function analyzeStockPrices(prices) {
+// Kadane's Algorithm for Single Buy-Sell
+function maxProfitSingleTransaction(prices) {
+    let minPrice = prices[0];
     let maxProfit = 0;
-    let buySellRecommendations = [];
+
+    for (let i = 1; i < prices.length; i++) {
+        maxProfit = Math.max(maxProfit, prices[i] - minPrice);
+        minPrice = Math.min(minPrice, prices[i]);
+    }
+
+    return maxProfit;
+}
+
+// Greedy Algorithm for Multiple Buy-Sell Transactions
+function maxProfitMultipleTransactions(prices) {
+    let maxProfit = 0;
+
+    for (let i = 1; i < prices.length; i++) {
+        if (prices[i] > prices[i - 1]) {
+            maxProfit += prices[i] - prices[i - 1];
+        }
+    }
+
+    return maxProfit;
+}
+
+// Buy-Sell Recommendations
+function getBuySellRecommendations(prices) {
+    let recommendations = [];
     let buyPrice = null;
 
     for (let i = 1; i < prices.length; i++) {
-        // If the price is higher than the previous price, we consider it for profit
         if (prices[i] > prices[i - 1]) {
             if (buyPrice === null) {
-                buyPrice = prices[i - 1]; // Set buy price
-                buySellRecommendations.push(`Buy at ${buyPrice} on day ${i}`);
+                buyPrice = prices[i - 1];
+                recommendations.push(`Buy at ${buyPrice} on day ${i}`);
             }
         } else {
-            // If the price drops, we sell if we have a buy price set
             if (buyPrice !== null) {
-                maxProfit += prices[i - 1] - buyPrice; // Calculate profit
-                buySellRecommendations.push(`Sell at ${prices[i - 1]} on day ${i}`);
-                buyPrice = null; // Reset buy price
+                recommendations.push(`Sell at ${prices[i - 1]} on day ${i}`);
+                buyPrice = null;
             }
         }
     }
 
-    // Handle case where the last price is a sell
     if (buyPrice !== null) {
-        buySellRecommendations.push(`Sell at ${prices[prices.length - 1]} on day ${prices.length}`);
-        maxProfit += prices[prices.length - 1] - buyPrice;
+        recommendations.push(`Sell at ${prices[prices.length - 1]} on day ${prices.length}`);
     }
 
-    return { maxProfit, buySellRecommendations };
+    return recommendations;
 }
